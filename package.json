@@ -1,0 +1,27 @@
+{
+  "name": "palworld-save-converter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Convert Palworld co-op saves to dedicated-server saves and back, entirely in the browser.",
+  "license": "GPL-3.0-only",
+  "author": "KeepWorlds (https://www.keepworlds.com)",
+  "homepage": "https://www.keepworlds.com/tools/palworld-save-converter?utm_source=github&utm_medium=referral&utm_campaign=palworld_2610_github_converter",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/keepworlds-dev/palworld-save-converter.git"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "check": "tsc --noEmit && node scripts/check.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vite": "7.1.12"
+  }
+}

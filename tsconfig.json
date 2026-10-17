@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    // ES2020 for BigInt literals (player-id.ts uses 64-bit constants that cannot pass through Number).
+    "target": "ES2020",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "types": ["vite/client"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "verbatimModuleSyntax": false
+  },
+  "include": ["src"]
+}

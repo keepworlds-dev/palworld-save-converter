@@ -1,0 +1,4 @@
+node_modules/
+dist/
+PLAN.md
+.DS_Store
