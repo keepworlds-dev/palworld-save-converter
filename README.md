@@ -4,7 +4,7 @@
 
 Convert a Palworld co-op world into a dedicated-server save, or a dedicated-server world back into a co-op save, entirely in your browser. Your save files never leave your computer.
 
-**Use it online:** https://www.keepworlds.com/tools/palworld-save-converter?utm_source=github&utm_medium=referral&utm_campaign=palworld_2610_github_converter
+**Use it online:** [Palworld Save Converter](https://www.keepworlds.com/tools/palworld-save-converter?utm_source=github&utm_medium=referral&utm_campaign=palworld_2610_github_converter)
 
 ## Why you need it
 
