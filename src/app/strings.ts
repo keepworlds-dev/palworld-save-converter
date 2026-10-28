@@ -124,6 +124,8 @@ export const en = {
   hostIsCoop: "co-op host",
   alreadyCoopHost:
     "That character already uses the co-op host ID, so there's nothing to convert. Pick your character on the server instead.",
+  coopHostTaken:
+    "This world already has a co-op host. Converting it as is would delete the current host's character and hand the host's Pals to the character you picked. To change hosts, first move the current host out with Co-op → Dedicated server, then pick that converted world here.",
 
   steamLabel: "Steam ID (SteamID64)",
   steamHint:

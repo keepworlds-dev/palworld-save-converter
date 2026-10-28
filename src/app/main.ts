@@ -127,6 +127,32 @@ let download: { url: string; name: string } | null = null;
 
 // ---- Derived values ----
 
+/**
+ * Whether the world loaded at start has a character with this ID. **Both rosters count**:
+ * `playerGuids` are the file names under Players/, while the cleanup layer that actually
+ * deletes people filters the character table in Level.sav (which `summary.players` reads).
+ * Through the "pick .sav files one by one" path it is easy to leave someone's player file
+ * out, and checking file names alone would then let a silent deletion through.
+ */
+function hasPlayer(guid: string): boolean {
+  const w = state.world;
+  return (
+    w !== null &&
+    (w.playerGuids.includes(guid) || w.summary.players.some((p) => p.guid32 === guid))
+  );
+}
+
+/**
+ * Whether a "convert another character" target collides with someone. `livePlayerGuids`
+ * covers IDs that appeared after a migration (the host's new one); `hasPlayer` covers people
+ * whose file was left out and who only exist in the character table, which is exactly what
+ * the cleanup layer deletes. The latter is the load-time roster, so an ID already migrated
+ * away is blocked too. Erring that way is fine: nobody moves a friend back onto an old ID.
+ */
+function friendTargetTaken(guid: string): boolean {
+  return state.livePlayerGuids.includes(guid) || hasPlayer(guid);
+}
+
 function derive() {
   const s = state;
   const steamId = extractSteamId64(s.steamInput);
@@ -153,20 +179,38 @@ function derive() {
     s.mode === "toServer" &&
     targetGuid !== null &&
     targetGuid !== s.hostGuid &&
-    s.world !== null &&
-    s.world.playerGuids.includes(targetGuid);
+    hasPlayer(targetGuid);
   const takenBy =
     targetTaken && s.world
       ? (s.world.summary.players.find((p) => p.guid32 === targetGuid)?.nickname ?? targetGuid)
       : null;
 
   const hostIsAlreadyCoop = s.mode === "toCoop" && s.hostGuid === COOP_HOST_GUID;
+  // The reverse target `…0001` is already taken and there are other characters to pick: the
+  // loaded world is a multiplayer co-op world, most likely someone changing hosts who skipped
+  // "move the current host out first". Converting anyway, the throwaway-cleanup layer deletes
+  // the current host outright, and the host's Pals, whose owner is also `…0001`, all end up
+  // with the new host. Verification still passes.
+  //
+  // **This is a state of the whole world, not of the selection**: whoever is picked collides
+  // with `…0001`. Tied to the selection, picking the host would show `alreadyCoopHost` ("pick
+  // another character") and picking another would be blocked here, sending the user in
+  // circles. A host-only world does not count; there "nothing to convert" is right.
+  //
+  // Both halves read **only the character table**, not `hasPlayer`: the table entry is what
+  // gets deleted. A lone `…0001.sav` with no such character is simply overwritten and nobody
+  // is lost; counting it would block reverse conversion of that world with no way out.
+  const coopHostTaken =
+    s.mode === "toCoop" &&
+    s.world !== null &&
+    s.world.summary.players.some((p) => p.guid32 === COOP_HOST_GUID) &&
+    s.world.summary.players.some((p) => p.guid32 !== COOP_HOST_GUID);
   const targetValid = targetGuid !== null && !sameAsHost && !targetTaken;
 
   // Each step depends on the one before. The convert button reads these too, so a card can
   // never look locked while its button is clickable.
   const step1Done = s.world !== null;
-  const step2Done = step1Done && !!s.hostGuid && !hostIsAlreadyCoop;
+  const step2Done = step1Done && !!s.hostGuid && !hostIsAlreadyCoop && !coopHostTaken;
   const step3Done = step2Done && targetValid;
   const states: StepState[] = [
     step1Done ? "done" : "active",
@@ -185,6 +229,7 @@ function derive() {
     guidCollides,
     takenBy,
     hostIsAlreadyCoop,
+    coopHostTaken,
     targetValid,
     step3Done,
     states,
@@ -257,7 +302,8 @@ cards[0].body.append(step1Row, worldList, step1Error.root, loadedLine, undecoded
 // Step 2
 const playerList = h("div", { class: "player-list" });
 const alreadyCoop = h("p", { class: "danger" }, t.alreadyCoopHost);
-cards[1].body.append(playerList, alreadyCoop);
+const coopHostTakenLine = h("p", { class: "danger" }, t.coopHostTaken);
+cards[1].body.append(playerList, alreadyCoop, coopHostTakenLine);
 
 // Step 3 (to server)
 const steamInputEl = h("input", {
@@ -591,7 +637,7 @@ async function onConvertFriend(sourceGuid: string) {
   const c = client;
   const target = normalizeGuid(state.friendInputs[sourceGuid] ?? "");
   if (!c || target === null || state.busy !== null) return;
-  if (target === sourceGuid || state.livePlayerGuids.includes(target)) return;
+  if (target === sourceGuid || friendTargetTaken(target)) return;
 
   state.busy = "converting";
   state.error = null;
@@ -811,7 +857,7 @@ function renderResult() {
       const check = () => {
         const raw = state.friendInputs[p.guid32] ?? "";
         const target = normalizeGuid(raw);
-        const taken = target !== null && state.livePlayerGuids.includes(target);
+        const taken = target !== null && friendTargetTaken(target);
         const bad = raw !== "" && (target === null || taken);
         err.textContent = bad ? (taken ? t.friendTaken : t.invalidGuid) : "";
         show(err, bad);
@@ -918,7 +964,8 @@ function update() {
   for (const input of playerList.querySelectorAll<HTMLInputElement>("input[name=host]")) {
     input.checked = input.value === s.hostGuid;
   }
-  show(alreadyCoop, d.hostIsAlreadyCoop);
+  show(alreadyCoop, d.hostIsAlreadyCoop && !d.coopHostTaken);
+  show(coopHostTakenLine, d.coopHostTaken);
 
   // Step 3
   const steamBad = s.steamInput.trim() !== "" && d.steamId === null;
